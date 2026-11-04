@@ -17,7 +17,7 @@ set -euo pipefail
 # Template source. Defaults to the published repo (a `gh:` URL so copier records
 # a real ref and `copier update` works in generated projects). Override with
 # BOOTSTRAP_TEMPLATE_SRC=. (or a local path) to test an unpushed checkout.
-template="${BOOTSTRAP_TEMPLATE_SRC:-gh:kzarzycki/project-templates}"
+template="${BOOTSTRAP_TEMPLATE_SRC:-gh:jakubigla/project-templates}"
 
 name=""; type=""; dest=""; language=""
 extra_data=()
