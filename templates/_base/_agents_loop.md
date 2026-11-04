@@ -3,48 +3,6 @@
 The `engineering-loop` skill reads this file at every step but the gate.
 Replace each prompt with this project's fact; keep the headings.
 
-## Settings
-
-`mise run loop:approvals` reads this block, the engineering loop's settings
-(its SKILL.md § Settings has every key). It is YAML: `key: value` under a
-section name, a list one item per line. Quote a value that starts with `*` or
-reads as another type (`no`, `on`, `1.10`). A key or section the loop doesn't
-know is refused, naming it. § Approvals says what the seed's settings do.
-
-```yaml
-spec:
-  # specs approved by policy, with no owner record; any other waits for the owner
-  auto:
-    - bug
-    - follow-up
-    - sub-issue
-{% if not include_ci %}
-loop:
-  ci: false
-{% endif %}
-# practice:
-#   the skill that fills a stage this project changes, one key each, such as
-#   spec: brainstorming; a stage left out runs its default
-
-risk:
-  verifier: true
-  paths:
-    - .github/**
-    - CODEOWNERS
-    - docs/agents/loop.md
-
-# bot:
-#   renovate:   # deps:renovate's routine group, run on your token: see § Approvals
-#     branch: renovate/
-#     paths:
-#       - uv.lock
-#       - package-lock.json
-#       - pyproject.toml
-#       - package.json
-#       - mise.toml
-#       - .github/workflows/*.yml
-```
-
 ## Owner
 
 Who owns this repository and answers the loop's questions (a GitHub handle).
@@ -64,20 +22,20 @@ recomputation or an invariant.
 
 ## Approvals
 
-Only people approve; the rest is the standing policy in § Settings, which
-`mise run loop:approvals` evaluates. `spec.auto` with `bug`, `follow-up` and
+Only people approve; the rest is the standing policy in gatekeeper.md
+§ Policy, which `mise run loop:approvals` evaluates. `spec.auto` with `bug`, `follow-up` and
 `sub-issue` approves the spec of a bug, a `Found while #<n>` follow-up, or a writer's sub-issue of an epic the
 owner approved; any other spec waits for the owner. A PR lands on its gates
 unless it is high risk: `risk:high` on the PR or its issue, the `risk` rule
 matches, or the verifier's cap was reached with a blocker or major open. A
-high-risk merge waits for the owner's `approved:merge` label, added after the
-head's push.
+high-risk merge waits for the owner's go on that head:
+`approvals.py approve merge <pr> --head <sha> --by owner`.
 
 The seed's `risk` rule lets the verifier judge every change and keeps a few
 paths the owner's whatever it says. `verifier: true` holds when the verifier's
 newest pass on the head says anything but `Risk: low`, so the owner sees only
 what no check can settle. The paths hold on their own: CI's workflows and
-rulesets under `.github/`, `CODEOWNERS`, and this file, since each decides what
+rulesets under `.github/`, `CODEOWNERS`, this file and gatekeeper.md, since each decides what
 the gates require and who approves. `risk` also takes `labels` (such as
 `size:XL` or `area:<name>`, one per line) and `always: true`, which holds every
 merge for the owner. `cap: <n>` under `loop` changes the verifier's pass cap
@@ -102,7 +60,7 @@ passes `loop:approvals`, its author merges it, and no risk rule holds it.
 Renovate (`mise run deps:renovate`) labels `verify` the updates an agent
 reviews: the template, the agent packages and every major. Its routine group
 runs on the developer's token, so its PRs are the developer's and a verifier
-reviews them too. The commented `bot.renovate` entry above exempts them
+reviews them too. The commented `bot.renovate` entry in gatekeeper.md exempts them
 instead: it names Renovate by its `renovate/` branch, and holds only when every
 commit is the developer's (`deps:renovate` sets Renovate's git author to
 your git identity) and every file matches its `paths`. The `risk` rule still holds a match on its own paths, so

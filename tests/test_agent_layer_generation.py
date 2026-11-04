@@ -19,10 +19,11 @@ MISE = shutil.which("mise")
 assert MISE is not None
 
 
-def settings(text: str) -> dict:
-    """A docs/agents/ file's ```yaml settings block as the pack's approvals.py reads it, with safe_load."""
-    found = re.search(r"^## Settings\n.*?^```yaml[ \t]*\n(.*?)^```[ \t]*$", text, re.DOTALL | re.MULTILINE)
-    assert found, "no ```yaml block under ## Settings"
+def settings(text: str, heading: str = "Settings") -> dict:
+    """A docs/agents/ file's ```yaml block under `## <heading>` as the pack's approvals.py reads it, with safe_load:
+    issue-tracker.md's `## Settings`, gatekeeper.md's `## Policy`."""
+    found = re.search(rf"^## {heading}\n.*?^```yaml[ \t]*\n(.*?)^```[ \t]*$", text, re.DOTALL | re.MULTILINE)
+    assert found, f"no ```yaml block under ## {heading}"
     return yaml.safe_load(found[1])
 
 
@@ -397,8 +398,8 @@ class AgentLayerGenerationTest(unittest.TestCase):
         self.assertEqual(
             [
                 {
-                    "git": "kzarzycki/agent-skills/engineering",
-                    "ref": "engineering-v0.25.0",
+                    "git": "jakubigla/agent-skills/engineering",
+                    "ref": "engineering-v0.26.5",
                 }
             ],
             yaml.safe_load(apm)["dependencies"]["apm"],
@@ -448,8 +449,8 @@ class AgentLayerGenerationTest(unittest.TestCase):
 
         manifest = (project / "apm.yml").read_text()
         answers = (project / ".copier-answers.yml").read_text()
-        self.assertEqual(1, manifest.count("git: kzarzycki/agent-skills/engineering"))
-        self.assertIn("ref: engineering-v0.25.0", manifest)
+        self.assertEqual(1, manifest.count("git: jakubigla/agent-skills/engineering"))
+        self.assertIn("ref: engineering-v0.26.5", manifest)
         self.assertIn("include_engineering_workflow: true", answers)
         self.assertNotIn("engineering_capability_source", answers)
         self.assertNotIn("engineering_capability_ref", answers)
@@ -1280,19 +1281,26 @@ class AgentLayerGenerationTest(unittest.TestCase):
                 hooks[name],
             )
         approvals_seed = (project / "docs/agents/loop.md").read_text()
+        policy_seed = (project / "docs/agents/gatekeeper.md").read_text()
         self.assertIn("Only people approve", approvals_seed)
         # The seed's policy as the pack reads it: the verifier judges risk, CI, CODEOWNERS and loop.md stay the owner's.
         # Only the old line form is gone; the alternatives are documented, not switched on.
         self.assertEqual(
             {
                 "spec": {"auto": ["bug", "follow-up", "sub-issue"]},
-                "risk": {"verifier": True, "paths": [".github/**", "CODEOWNERS", "docs/agents/loop.md"]},
+                "risk": {
+                    "verifier": True,
+                    "paths": [".github/**", "CODEOWNERS", "docs/agents/loop.md", "docs/agents/gatekeeper.md"],
+                },
             },
-            settings(approvals_seed),
+            settings(policy_seed, "Policy"),
         )
+        # pack 0.26.5 refuses a policy in both files, and the owner's go on a high-risk head is approve merge
+        self.assertNotIn("## Settings", approvals_seed)
+        self.assertIn("approve merge <pr> --head <sha> --by owner", approvals_seed)
         self.assertNotRegex(approvals_seed, re.compile(r"^[ \t]*[-*] +(?:spec|plan|merge|risk|bot|signoff):", re.MULTILINE))
         # Uncommented, the seed's bot entry is the pack's updater named by its branch, over the routine group's files.
-        bot = re.search(r"^# bot:\n(?:#  .*\n)+", approvals_seed, re.MULTILINE)
+        bot = re.search(r"^# bot:\n(?:#  .*\n)+", policy_seed, re.MULTILINE)
         self.assertEqual(
             {"bot": {"renovate": {"branch": "renovate/", "paths": [
                 "uv.lock", "package-lock.json", "pyproject.toml", "package.json", "mise.toml", ".github/workflows/*.yml",
@@ -1312,7 +1320,6 @@ class AgentLayerGenerationTest(unittest.TestCase):
             (
                 "loop.md",
                 (
-                    "Settings",
                     "Owner",
                     "Proof on a branch",
                     "Acceptance references",
@@ -1329,6 +1336,7 @@ class AgentLayerGenerationTest(unittest.TestCase):
                 ("Settings", "Never on GitHub"),
             ),
             ("coding-standards.md", ("Domain facts",)),
+            ("gatekeeper.md", ("Policy",)),
         ):
             text = (project / "docs/agents" / name).read_text()
             self.assertNotIn("Landing exceptions", text)
@@ -1400,7 +1408,7 @@ class AgentLayerGenerationTest(unittest.TestCase):
                 components = tracker["components"]
                 self.assertGreater(len(components), 2)  # the leaf's own parts, then tooling and docs
                 self.assertEqual([], [name for name, text in components.items() if not name.startswith("area:") or not text])
-                self.assertIs(True, settings((project / "docs/agents/loop.md").read_text())["risk"]["verifier"])
+                self.assertIs(True, settings((project / "docs/agents/gatekeeper.md").read_text(), "Policy")["risk"]["verifier"])
 
                 # Every step that runs a command runs a mise task: the task is the check's one definition.
                 for workflow in (project / ".github/workflows").glob("*.yml"):
@@ -1537,7 +1545,7 @@ class AgentLayerGenerationTest(unittest.TestCase):
         [checks] = [rule["parameters"] for rule in ruleset["rules"] if rule["type"] == "required_status_checks"]
         self.assertEqual([{"context": "loop:approvals"}], checks["required_status_checks"])
         # The pack's approvals.py reads `ci: false` as no CI and then wants its local-ci record.
-        self.assertEqual({"ci": False}, settings((project / "docs/agents/loop.md").read_text())["loop"])
+        self.assertEqual({"ci": False}, settings((project / "docs/agents/gatekeeper.md").read_text(), "Policy")["loop"])
 
         # The approvals workflow reruns on local-ci's record, a PR comment, instead of on CI's completion.
         text = (project / ".github/workflows/approvals.yml").read_text()
@@ -1977,7 +1985,7 @@ class RenovateGenerationTest(unittest.TestCase):
         manager = json.loads((project / "renovate.json").read_text())["customManagers"][0]
         # Renovate's matchStrings are ECMAScript; this one uses nothing Python's re reads differently.
         found = re.search(manager["matchStrings"][0].replace("(?<", "(?P<"), (project / "apm.yml").read_text())
-        self.assertEqual(("kzarzycki/agent-skills", "engineering", "0.25.0"),
+        self.assertEqual(("jakubigla/agent-skills", "engineering", "0.26.5"),
                          (found["packageName"], found["package"], found["currentValue"]))
 
     def test_without_the_agent_layer_renovate_has_no_apm_manager_or_task(self) -> None:

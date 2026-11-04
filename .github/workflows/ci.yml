@@ -116,7 +116,7 @@ jobs:
           test -f .apm/instructions/project.instructions.md
           test ! -e .agents-toolkit
           test ! -e scripts/agent-layer
-          grep -q 'git: kzarzycki/agent-skills/engineering' apm.yml
+          grep -q 'git: jakubigla/agent-skills/engineering' apm.yml
           grep -q '^\[tasks."agent:sync"\]$' mise.toml
           grep -q '^\[tasks."agent:claude"\]$' mise.toml
           grep -q '^\[tasks."agent:codex"\]$' mise.toml

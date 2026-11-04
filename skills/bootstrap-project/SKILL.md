@@ -121,7 +121,7 @@ scaffold.
 - Requires `copier` (`uv tool install copier`) and, for hooks, `pre-commit`
   (`uv tool install pre-commit`). The script degrades gracefully if a tool is
   missing and tells the user what to install.
-- The wrapper points copier at `gh:kzarzycki/project-templates` by default, so a
+- The wrapper points copier at `gh:jakubigla/project-templates` by default, so a
   generated project records a real template ref. This alpha does not promise
   automatic update compatibility; follow the breaking-update guidance in the
   root README before using Copier update. Override the source with

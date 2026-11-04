@@ -573,6 +573,12 @@ project task calling `post_demo.sh` moves to `demo.sh`. The pack's 0.24.0 change
 - The tasks call the scripts with `uv run`, which installs their PyYAML, and
   the approvals workflow installs `uv` through mise.
 
+This fork (`jakubigla/project-templates`) takes the pack from
+`jakubigla/agent-skills/engineering`, a fork of kzarzycki/agent-skills, at
+`engineering-v0.26.5`. Updating a project rendered from kzarzycki's template
+to this fork moves `apm.yml`'s `git:` to the fork and the pack to 0.26.5: run
+`mise run agent:sync` and commit what it changes.
+
 Updating to v0.10.0 moved the pack to `^0.21.0` (a caret on 0.x:
 `^0.18.0` never takes 0.19.0, nor `^0.20.0` 0.21.0); run
 `mise run agent:intake -- --refresh`, then `agent:sync`, and commit what they
