@@ -210,11 +210,12 @@ With the pack on, `engineering_loop=true` (the default) turns on the pack's
 which `agent:sync` compiles into `AGENTS.md` (in `CLAUDE.md` with the vendored
 layer), says every change that lands as a PR runs it, unless a developer's personal
 instructions say `Engineering loop: off` and loop.md allows it. Deleting that line turns the loop off. The loop reads this project's
-facts from three files, seeded with a heading and a short prompt per fact:
+facts from four files, seeded with a heading and a short prompt per fact:
 
-- `docs/agents/loop.md`: a `## Settings` block of YAML the pack's `approvals.py`
-  reads (the spec policy, the risk rule, the skill for each stage the project
-  changes), then in prose the owner, proof on a branch, acceptance references,
+- `docs/agents/gatekeeper.md`: a `## Policy` block of YAML the pack's
+  `approvals.py` reads (the spec policy, the risk rule, the skill for each stage
+  the project changes);
+- `docs/agents/loop.md`: in prose the owner, proof on a branch, acceptance references,
   why a person must approve, the project's risk criteria, how a finding is
   judged in use, the worktree command, the ledger path and any extra verifier
   checklist;
@@ -226,14 +227,15 @@ facts from three files, seeded with a heading and a short prompt per fact:
 `mise run loop:approvals <point> [pr]` (alias `gate`) checks the proof each loop
 step leaves on GitHub, with the pack's `approvals.py`. The gates are the merge
 approval: the verifier's verdict is a review on the PR, and a PR whose proofs
-hold needs no person's label. Only people approve: `docs/agents/loop.md` §
-Settings is the owner's standing policy (`spec.auto`: `bug`, `follow-up`,
+hold needs no person's label. Only people approve: `docs/agents/gatekeeper.md` §
+Policy is the owner's standing policy (`spec.auto`: `bug`, `follow-up`,
 `sub-issue`), and a high-risk PR, one with `risk:high` or matching the `risk` rule, waits for the
-owner's `approved:merge` label; a push removes it. The seed's rule is
+owner's go on its head: `approvals.py approve merge <pr> --head <sha> --by owner` (pack 0.26.5; the
+`approved:merge` label alone is no go into the default branch). The seed's rule is
 `verifier: true`, which holds when the verifier's pass on the head says
 anything but `Risk: low`, plus the paths no check can settle: `.github/**`,
-`CODEOWNERS` and `docs/agents/loop.md`. `always: true` asks for the label on
-every merge. § Approvals explains three settings the seed leaves off:
+`CODEOWNERS`, `docs/agents/loop.md` and `docs/agents/gatekeeper.md`. `always: true`
+asks for the owner's go on every merge. § Approvals explains three settings the seed leaves off:
 `spec.auto: true`, a `signoff` section and `opt_out: true` under `loop`. The
 `.github/workflows/approvals.yml` workflow posts the merge result as the
 `loop:approvals` commit status on the PR head: pending while it waits for CI's
@@ -576,8 +578,13 @@ project task calling `post_demo.sh` moves to `demo.sh`. The pack's 0.24.0 change
 This fork (`jakubigla/project-templates`) takes the pack from
 `jakubigla/agent-skills/engineering`, a fork of kzarzycki/agent-skills, at
 `engineering-v0.26.5`. Updating a project rendered from kzarzycki's template
-to this fork moves `apm.yml`'s `git:` to the fork and the pack to 0.26.5: run
-`mise run agent:sync` and commit what it changes.
+to this fork moves `apm.yml`'s `git:` to the fork and the pack to 0.26.5, and
+creates `docs/agents/gatekeeper.md` with the seed's policy. Copier never rewrites
+an existing `loop.md`, and pack 0.26.5 refuses a project whose policy sits in
+both files, so in the same commit: move your `loop.md` `## Settings` block into
+`gatekeeper.md` under `## Policy` (replacing the seed's block, and adding
+`docs/agents/gatekeeper.md` to `risk.paths`), delete `## Settings` from
+`loop.md`, then run `mise run agent:sync` and commit what it changes.
 
 Updating to v0.10.0 moved the pack to `^0.21.0` (a caret on 0.x:
 `^0.18.0` never takes 0.19.0, nor `^0.20.0` 0.21.0); run
